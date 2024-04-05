@@ -1,5 +1,11 @@
 pub mod by_env;
 
+#[derive(Clone, Debug)]
+pub struct CompletionEntry {
+    pub filename: String,
+    pub full_path: String,
+}
+
 pub trait CompletionBackend {
     /// [generate(&mut self, input: &str)] should update the list of completions
     /// on call. Will be called willy-nilly, potentially multiple times a second
@@ -8,17 +14,18 @@ pub trait CompletionBackend {
     fn generate(&mut self, _: &str);
     /// [all(&self)] should return all the currently stored completion cand-
     /// idates. Called a *lot*, so should be reasonably cheap.
-    fn all(&self) -> &[String];
+    fn all(&self) -> &[CompletionEntry];
     /// [n(&self, n: usize)] should return the first [n] results or as many as
     /// possible if [n] is higher than the found completions. Not currently
     /// used, but probably will be in future.
-    fn n(&self, _: usize) -> &[String];
+    fn n(&self, _: usize) -> &[CompletionEntry];
 }
 
 // nonsense generator for working on UI before getting a proper backend working.
 pub mod dev {
     use super::CompletionBackend;
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    use super::CompletionEntry;
+    use std::time::{SystemTime, UNIX_EPOCH};
     const NONSENSE: [&'static str; 30] = [
         "suck",
         "tacit",
@@ -53,7 +60,7 @@ pub mod dev {
     ];
 
     pub struct Completions {
-        pub completions: Vec<String>,
+        pub completions: Vec<CompletionEntry>,
         time: SystemTime,
     }
 
@@ -100,14 +107,17 @@ pub mod dev {
                     .unwrap()
                     .subsec_nanos()
                     % 30;
-                self.completions.push(NONSENSE[index as usize].to_string());
+                self.completions.push(CompletionEntry {
+                    filename: NONSENSE[index as usize].to_string(),
+                    full_path: NONSENSE[index as usize].to_string(),
+                });
             }
             self.time = SystemTime::now();
         }
-        fn all(&self) -> &[String] {
+        fn all(&self) -> &[CompletionEntry] {
             self.completions.as_slice()
         }
-        fn n(&self, n: usize) -> &[String] {
+        fn n(&self, n: usize) -> &[CompletionEntry] {
             &self.completions.as_slice()[0..n - 1]
         }
     }
@@ -119,7 +129,7 @@ pub mod dev {
         println!("dev::Completions test");
         println!("=====================");
         for c in &cm.completions {
-            println!("Completion found: {c}");
+            println!("Completion found: {}", c.filename);
         }
         assert_eq!(&cm.completions.len(), &10)
     }
