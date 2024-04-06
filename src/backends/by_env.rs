@@ -86,6 +86,7 @@ impl Completions {
                                 if md.is_file() && (md.permissions().mode() & 0o111) != 0 {
                                     Some(CompletionEntry {
                                         filename: file.file_name().to_string_lossy().to_string(),
+                                        path: dir.to_string_lossy().to_string(),
                                         full_path: file.path().to_string_lossy().to_string(),
                                     })
                                 } else {

@@ -4,6 +4,7 @@ pub mod by_env;
 pub struct CompletionEntry {
     pub filename: String,
     pub full_path: String,
+    pub path: String,
 }
 
 pub trait CompletionBackend {
@@ -109,6 +110,7 @@ pub mod dev {
                     % 30;
                 self.completions.push(CompletionEntry {
                     filename: NONSENSE[index as usize].to_string(),
+                    path: NONSENSE[index as usize].to_string(),
                     full_path: NONSENSE[index as usize].to_string(),
                 });
             }

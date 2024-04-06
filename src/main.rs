@@ -4,6 +4,8 @@ mod backends;
 use backends::CompletionBackend;
 use backends::CompletionEntry;
 use egui::Response;
+use egui::Sense;
+use egui::Stroke;
 use egui::Ui;
 
 const WIDTH: f32 = 200.0;
@@ -15,7 +17,7 @@ fn main() -> Result<(), eframe::Error> {
             .with_inner_size([WIDTH, HEIGHT])
             .with_resizable(false)
             .with_active(true)
-            .with_window_type(egui::X11WindowType::Dock),
+            .with_window_type(egui::X11WindowType::Splash),
         centered: true,
         follow_system_theme: true,
         ..Default::default()
@@ -54,12 +56,11 @@ impl eframe::App for URun {
             if input_line.changed() {
                 self.backend.generate(&self.input);
             }
-            let area = ui.vertical(|vui| {
+            let area = ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |vui| {
                 for v in self.backend.all() {
                     v.ui(vui);
                 }
             });
-
             input_line.request_focus();
         });
     }
@@ -67,16 +68,32 @@ impl eframe::App for URun {
 
 impl CompletionEntry {
     fn ui(&self, ui: &mut Ui) -> Response {
-        ui.vertical_centered_justified(|ui| {
-            ui.add(egui::Label::new(
+        let mut surround = egui::Frame::default()
+            .inner_margin(5.0)
+            // .stroke(Stroke {
+            //     width: 1.5,
+            //     color: egui::Color32::DARK_GRAY,
+            // })
+            .begin(ui);
+        {
+            let filename_lbl = egui::Label::new(
                 egui::RichText::new(&self.filename)
                     .heading()
                     .background_color(egui::Color32::GRAY)
                     .color(egui::Color32::BLACK)
                     .size(16.0),
-            ));
-            ui.label(egui::RichText::new(&self.full_path));
-        })
-        .response
+            );
+            let path_lbl = egui::Label::new(egui::RichText::new(&self.path));
+
+            surround.content_ui.add(filename_lbl);
+            surround.content_ui.add(path_lbl);
+        }
+
+        let resp = surround.allocate_space(ui);
+        if resp.hovered() {
+            surround.frame.fill = egui::Color32::from_gray(69);
+        }
+        surround.paint(ui);
+        resp
     }
 }
