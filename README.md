@@ -25,12 +25,12 @@ I want a program like this, and the alternatives I found with a cursory search i
 - [x] List results in GUI
 - ~~[x] Highlight results on mouseover~~ Can't do it with the way items are shown at the moment and still have access to `item.clicked()`. Mouse UX isn't top priority at the moment though.
 - [x] Run hovered task on click
-- [ ] Keyboard navigation in list: <TAB> to move down list, <S-TAB> to move up, <RET> to launch. <C-n> and <C-p> to navigate, maybe <C-y> to launch?
-    - [ ] If it's not an absolute bastard to get working well, make <TAB> based movement "fill in" the input line without re-generating the suggestions until the user keeps typing
+- [ ] Keyboard navigation in list: `TAB` to move down list, `S-TAB` to move up, `RET` to launch. `C-n` and `C-p` to navigate, maybe `C-y` to launch?
+    - [ ] If it's not an absolute bastard to get working well, make `TAB` based movement "fill in" the input line without re-generating the suggestions until the user keeps typing
 
 At this point I'll consider it usable for my purposes, but here's some more goals that I may or may not get to:
 - Make the GUI rats' nest "nicer" to work with
-- "History" feature in the input line. <M-n> and <M-p> to browse
+- "History" feature in the input line. `M-n` and `M-p` to browse
 - CLI flags to opt in to features that contaminate the environment such as the history and cache files mentioned above
 - Maybe some CLI flags to spit out some potentially useful information that can be inferred from the system that parses $PATH, just because it seems easy to do and I'm personally mildly interested:
     - Duplicate entries in $PATH
