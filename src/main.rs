@@ -1,8 +1,11 @@
+use std::process::exit;
+
 use eframe::egui;
 
 mod backends;
 use backends::CompletionBackend;
 use backends::CompletionEntry;
+use egui::InputState;
 use egui::Response;
 use egui::Sense;
 use egui::Stroke;
@@ -40,41 +43,47 @@ fn main() -> Result<(), eframe::Error> {
 struct URun {
     input: String,
     backend: Box<dyn CompletionBackend>,
+    displayed: Vec<(Response, String)>,
 }
 impl Default for URun {
     fn default() -> Self {
         Self {
             input: "".to_string(),
             backend: Box::new(backends::by_env::Completions::new()),
+            displayed: vec![],
         }
     }
 }
 impl eframe::App for URun {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             let input_line = ui.text_edit_singleline(&mut self.input);
             if input_line.changed() {
                 self.backend.generate(&self.input);
             }
+            for (resp, full_path) in &self.displayed {
+                dbg!(resp.sense);
+                if ui.input(|i| i.pointer.any_click()) && resp.hovered() {
+                    println!("clicked {}", full_path);
+                    std::process::Command::new(full_path).spawn().unwrap();
+                    exit(0);
+                }
+            }
+            self.displayed = vec![];
             let area = ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |vui| {
                 for v in self.backend.all() {
-                    v.ui(vui);
+                    self.displayed.push((v.ui(vui), v.full_path.to_owned()));
                 }
             });
             input_line.request_focus();
         });
     }
 }
-
 impl CompletionEntry {
+    // At present, apparently, we can either show a hover effect here on mouse
+    // hover OR respond to clicks in update(..) but not both
     fn ui(&self, ui: &mut Ui) -> Response {
-        let mut surround = egui::Frame::default()
-            .inner_margin(5.0)
-            // .stroke(Stroke {
-            //     width: 1.5,
-            //     color: egui::Color32::DARK_GRAY,
-            // })
-            .begin(ui);
+        let mut surround = egui::Frame::default().inner_margin(5.0).begin(ui);
         {
             let filename_lbl = egui::Label::new(
                 egui::RichText::new(&self.filename)
@@ -88,12 +97,14 @@ impl CompletionEntry {
             surround.content_ui.add(filename_lbl);
             surround.content_ui.add(path_lbl);
         }
-
-        let resp = surround.allocate_space(ui);
-        if resp.hovered() {
-            surround.frame.fill = egui::Color32::from_gray(69);
-        }
-        surround.paint(ui);
-        resp
+        // let mut resp = surround.allocate_space(ui);
+        // let mut resp = surround.end(ui);
+        // resp.sense = Sense::click();
+        // if resp.hovered() {
+        // surround.frame.fill = egui::Color32::from_gray(69);
+        // }
+        return surround.end(ui).interact(Sense::click());
+        // surround.paint(ui);
+        // resp
     }
 }
