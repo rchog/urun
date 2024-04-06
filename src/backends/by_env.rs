@@ -152,10 +152,29 @@ impl CompletionBackend for Completions {
     fn len(&self) -> usize {
         self.completions.len()
     }
+
     #[allow(unreachable_code)]
     fn execute(&self, task: &CompletionEntry) -> egui::load::Result<String, super::UError> {
         std::process::Command::new(&task.full_path).spawn().unwrap();
         exit(0);
+        return Err(UError::Unknown);
+    }
+
+    #[allow(unreachable_code)]
+    fn command(&self, cmd: &str) -> egui::load::Result<String, super::UError> {
+        let args = cmd.split_once(" ").unwrap_or((cmd, ""));
+        let argv = shell_words::split(args.1).expect("Error parsing shell command");
+        match std::process::Command::new(args.0).args(argv).spawn() {
+            Err(ref e) if e.kind() == std::io::ErrorKind::NotFound => {
+                eprintln!("Error running shell command: NotFound");
+                exit(0)
+            }
+            Err(_) => {
+                eprintln!("Unknown error running shell command.");
+                exit(0)
+            }
+            _ => exit(0),
+        };
         return Err(UError::Unknown);
     }
 }

@@ -81,11 +81,15 @@ impl eframe::App for URun {
                 }
             }
             // Execute
-            else if ui.input(|i| i.key_released(egui::Key::Enter))
+            else if ui.input(|i| i.key_pressed(egui::Key::Enter))
                 || ui.input(|i| i.key_released(egui::Key::Y) && i.modifiers.ctrl)
             {
-                let (_, task) = &self.displayed[self.focused];
-                let _ = self.backend.execute(&task);
+                if self.backend.len() > 0 {
+                    let (_, task) = &self.displayed[self.focused];
+                    let _ = self.backend.execute(&task);
+                } else if self.input.len() > 0 {
+                    let _ = self.backend.command(&self.input);
+                }
             }
             // Exit
             else if ui.input(|i| i.key_released(egui::Key::Escape)) {

@@ -35,6 +35,8 @@ pub trait CompletionBackend {
     /// The return type is subject to change as I think of fancier ways to use
     /// this a. la Telescope
     fn execute(&self, task: &CompletionEntry) -> Result<String, UError>;
+    /// Run/execute an arbitrary command, e.g. a shell command with arguments
+    fn command(&self, command: &str) -> Result<String, UError>;
 }
 
 // nonsense generator for working on UI before getting a proper backend working.
@@ -145,6 +147,11 @@ pub mod dev {
 
         fn execute(&self, task: &CompletionEntry) -> Result<String, UError> {
             println!("Execute task tried: {}", task.full_path);
+
+            return Err(UError::Unknown);
+        }
+        fn command(&self, cmd: &str) -> Result<String, UError> {
+            println!("Command tried: {}", cmd);
 
             return Err(UError::Unknown);
         }
