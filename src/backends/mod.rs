@@ -1,3 +1,5 @@
+use egui::load::Result;
+
 pub mod by_env;
 
 #[derive(Clone, Debug)]
@@ -5,6 +7,12 @@ pub struct CompletionEntry {
     pub filename: String,
     pub full_path: String,
     pub path: String,
+}
+
+#[allow(unused)]
+pub enum UError {
+    Unknown,
+    Stderr(String),
 }
 
 pub trait CompletionBackend {
@@ -20,12 +28,21 @@ pub trait CompletionBackend {
     /// possible if [n] is higher than the found completions. Not currently
     /// used, but probably will be in future.
     fn n(&self, _: usize) -> &[CompletionEntry];
+    /// The number of elements all() would return
+    fn len(&self) -> usize;
+    /// Run/execute the indicated item in backend-dependant way. A "normal" sys-
+    /// tem application launcher should exit the urun process here as well.
+    /// The return type is subject to change as I think of fancier ways to use
+    /// this a. la Telescope
+    fn execute(&self, task: &CompletionEntry) -> Result<String, UError>;
 }
 
 // nonsense generator for working on UI before getting a proper backend working.
+#[allow(unused)]
 pub mod dev {
     use super::CompletionBackend;
     use super::CompletionEntry;
+    use super::UError;
     use std::time::{SystemTime, UNIX_EPOCH};
     const NONSENSE: [&'static str; 30] = [
         "suck",
@@ -121,6 +138,15 @@ pub mod dev {
         }
         fn n(&self, n: usize) -> &[CompletionEntry] {
             &self.completions.as_slice()[0..n - 1]
+        }
+        fn len(&self) -> usize {
+            self.completions.len()
+        }
+
+        fn execute(&self, task: &CompletionEntry) -> Result<String, UError> {
+            println!("Execute task tried: {}", task.full_path);
+
+            return Err(UError::Unknown);
         }
     }
 

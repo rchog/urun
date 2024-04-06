@@ -1,9 +1,11 @@
 use super::CompletionBackend;
 use super::CompletionEntry;
+use super::UError;
 use std::env;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path;
+use std::process::exit;
 use std::time::SystemTime;
 /// Most basic completion backend.
 /// Plan: - parse env var PATH
@@ -146,6 +148,15 @@ impl CompletionBackend for Completions {
         } else {
             &self.completions.as_slice()[0..n - 1]
         }
+    }
+    fn len(&self) -> usize {
+        self.completions.len()
+    }
+    #[allow(unreachable_code)]
+    fn execute(&self, task: &CompletionEntry) -> egui::load::Result<String, super::UError> {
+        std::process::Command::new(&task.full_path).spawn().unwrap();
+        exit(0);
+        return Err(UError::Unknown);
     }
 }
 
