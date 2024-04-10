@@ -1,6 +1,9 @@
 use super::CompletionBackend;
 use super::CompletionEntry;
+use super::Exec;
 use super::UError;
+use crate::config;
+use crate::config::Config;
 use std::env;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -87,9 +90,9 @@ impl Completions {
                             file.metadata().map_or(None, |md| {
                                 if md.is_file() && (md.permissions().mode() & 0o111) != 0 {
                                     Some(CompletionEntry {
-                                        filename: file.file_name().to_string_lossy().to_string(),
-                                        path: dir.to_string_lossy().to_string(),
-                                        full_path: file.path().to_string_lossy().to_string(),
+                                        title: file.file_name().to_string_lossy().to_string(),
+                                        subtitle: dir.to_string_lossy().to_string(),
+                                        action: file.path().to_string_lossy().to_string(),
                                     })
                                 } else {
                                     None
@@ -104,7 +107,7 @@ impl Completions {
             entries.append(&mut files.to_vec());
         }
 
-        entries.sort_by(|a, b| String::cmp(&a.filename, &b.filename));
+        entries.sort_by(|a, b| String::cmp(&a.title, &b.title));
 
         return entries;
     }
@@ -126,7 +129,7 @@ impl CompletionBackend for Completions {
             self.completions = candidates
                 .iter()
                 .filter_map(|item| {
-                    if item.filename.starts_with(input) {
+                    if item.title.starts_with(input) {
                         Some(item.clone())
                     } else {
                         None
@@ -154,28 +157,29 @@ impl CompletionBackend for Completions {
     }
 
     #[allow(unreachable_code)]
-    fn execute(&self, task: &CompletionEntry) -> egui::load::Result<String, super::UError> {
-        std::process::Command::new(&task.full_path).spawn().unwrap();
-        exit(0);
-        return Err(UError::Unknown);
+    fn execute(&self, task: &CompletionEntry) -> Exec {
+        match std::process::Command::new(&task.action).spawn() {
+            Ok(_) => return Exec::Exit(0),
+            Err(_) => return Exec::Exit(1),
+        }
     }
 
     #[allow(unreachable_code)]
-    fn command(&self, cmd: &str) -> egui::load::Result<String, super::UError> {
+    fn command(&self, cmd: &str) -> Exec {
         let args = cmd.split_once(" ").unwrap_or((cmd, ""));
         let argv = shell_words::split(args.1).expect("Error parsing shell command");
         match std::process::Command::new(args.0).args(argv).spawn() {
             Err(ref e) if e.kind() == std::io::ErrorKind::NotFound => {
                 eprintln!("Error running shell command: NotFound");
-                exit(0)
+                return Exec::Exit(1);
             }
             Err(_) => {
                 eprintln!("Unknown error running shell command.");
-                exit(0)
+                return Exec::Exit(1);
             }
-            _ => exit(0),
+            _ => return Exec::Exit(0),
         };
-        return Err(UError::Unknown);
+        return Exec::Exit(0);
     }
 }
 
@@ -202,7 +206,7 @@ mod tests {
         assert!(be
             .all()
             .iter()
-            .find(|&v| { v.filename == "printf".to_string() })
+            .find(|&v| { v.title == "printf".to_string() })
             .is_some());
     }
 
@@ -213,7 +217,7 @@ mod tests {
         assert!(be
             .all()
             .iter()
-            .find(|&v| { v.filename == "printf".to_string() })
+            .find(|&v| { v.title == "printf".to_string() })
             .is_none());
     }
 
@@ -224,7 +228,7 @@ mod tests {
         assert!(be
             .all()
             .iter()
-            .find(|&v| { v.filename == "little red riding hood".to_string() })
+            .find(|&v| { v.title == "little red riding hood".to_string() })
             .is_none());
     }
 
@@ -235,7 +239,7 @@ mod tests {
         assert!(be
             .all()
             .iter()
-            .find(|&v| { v.filename == "ls".to_string() })
+            .find(|&v| { v.title == "ls".to_string() })
             .is_none());
     }
 }
