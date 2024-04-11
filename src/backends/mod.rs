@@ -1,5 +1,3 @@
-use egui::load::Result;
-
 pub mod launcher;
 
 #[derive(Clone, Debug)]
@@ -9,6 +7,7 @@ pub struct CompletionEntry {
     pub action: String,
 }
 
+#[allow(dead_code)]
 pub enum Exec {
     Exit(i32),
     Continue,

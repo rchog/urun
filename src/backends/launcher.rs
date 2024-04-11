@@ -1,14 +1,10 @@
 use super::CompletionBackend;
 use super::CompletionEntry;
 use super::Exec;
-use super::UError;
-use crate::config;
-use crate::config::Config;
 use std::env;
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path;
-use std::process::exit;
 use std::time::SystemTime;
 /// Most basic completion backend.
 /// Plan: - parse env var PATH

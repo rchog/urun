@@ -11,6 +11,7 @@ use backends::CompletionEntry;
 use egui::Color32;
 use egui::Response;
 use egui::Sense;
+use egui::TextEdit;
 use egui::Ui;
 
 const WIDTH: f32 = 200.0;
@@ -42,7 +43,7 @@ struct URun {
     backend: Box<dyn CompletionBackend>,
     displayed: Vec<(Response, CompletionEntry)>,
     focused: usize,
-    history_idx: usize,
+    history_idx: Option<usize>,
     config: Config,
 }
 
@@ -61,6 +62,14 @@ impl URun {
         }
         exit(code);
     }
+
+    fn set_input(&mut self) {
+        let history_len = self.config.history.len();
+        match self.history_idx {
+            Some(n) => self.input = self.config.history[history_len - 1 - n].clone(),
+            None => self.input = "".to_string(),
+        }
+    }
 }
 
 impl Default for URun {
@@ -70,7 +79,7 @@ impl Default for URun {
             backend: Box::new(backends::launcher::Completions::new()),
             displayed: vec![],
             focused: 0,
-            history_idx: 0,
+            history_idx: None,
             config: Default::default(),
         }
     }
@@ -79,11 +88,7 @@ impl Default for URun {
 impl eframe::App for URun {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            let input_line = ui.text_edit_singleline(&mut self.input);
-            if input_line.changed() {
-                self.backend.generate(&self.input);
-                self.focused = 0;
-            }
+            // let input_line = ui.text_edit_singleline(&mut self.input);
 
             for (resp, item) in &self.displayed {
                 if ui.input(|i| i.pointer.any_click()) && resp.hovered() {
@@ -95,25 +100,37 @@ impl eframe::App for URun {
             if ui.input(|i| i.key_released(egui::Key::P) && i.modifiers.alt)
                 || ui.input(|i| i.key_released(egui::Key::ArrowUp))
             {
-                let history_len = self.config.history.len();
-                if self.history_idx < history_len {
-                    self.history_idx += 1;
-                    self.input = self.config.history[history_len - self.history_idx].clone();
+                match self.history_idx {
+                    None => {
+                        self.history_idx = Some(0);
+                    }
+                    Some(n) if n < self.config.history.len() - 1 => {
+                        self.history_idx = Some(n + 1);
+                    }
+                    Some(_) => {
+                        return;
+                    }
                 }
+                self.set_input();
+                return ();
             }
             // History next
             else if ui.input(|i| i.key_released(egui::Key::N) && i.modifiers.alt)
                 || ui.input(|i| i.key_released(egui::Key::ArrowDown))
             {
-                let history_len = self.config.history.len();
-                if self.history_idx > 0 {
-                    self.input = self.config.history[history_len - self.history_idx].clone();
-                    self.history_idx -= 1;
+                match self.history_idx {
+                    None => {
+                        return;
+                    }
+                    Some(n) if n > 0 => {
+                        self.history_idx = Some(n - 1);
+                    }
+                    Some(_) => {
+                        self.history_idx = None;
+                    }
                 }
-
-                if self.history_idx == 0 {
-                    self.input = "".to_string();
-                }
+                self.set_input();
+                return ();
             }
             // Down
             else if ui.input(|i| i.key_released(egui::Key::N) && i.modifiers.ctrl)
@@ -143,24 +160,23 @@ impl eframe::App for URun {
                     let (_, task) = &self.displayed[self.focused];
                     match self.backend.execute(&task) {
                         backends::Exec::Continue => {
-                            self.config.history.push(task.action.clone());
+                            self.config.push_history(task.action.clone());
+
                             self.input = "".to_string();
                         }
                         backends::Exec::Exit(code) => {
-                            self.config.history.push(task.action.clone());
-                            self.input = "".to_string();
+                            self.config.push_history(task.action.clone());
                             self.exit(code);
                         }
                     }
                 } else if self.input.len() > 0 {
                     match self.backend.command(&self.input) {
                         backends::Exec::Continue => {
-                            self.config.history.push(self.input.clone());
+                            self.config.push_history(self.input.clone());
                             self.input = "".to_string();
                         }
                         backends::Exec::Exit(code) => {
-                            self.config.history.push(self.input.clone());
-                            self.input = "".to_string();
+                            self.config.push_history(self.input.clone());
                             self.exit(code);
                         }
                     }
@@ -171,6 +187,15 @@ impl eframe::App for URun {
                 self.exit(0);
             }
 
+            let input_line = TextEdit::singleline(&mut self.input)
+                .cursor_at_end(true)
+                .show(ui);
+
+            if input_line.response.changed() {
+                self.backend.generate(&self.input);
+                self.focused = 0;
+            }
+            input_line.response.request_focus();
             self.displayed = vec![];
             let _area =
                 ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |vui| {
@@ -180,7 +205,6 @@ impl eframe::App for URun {
                         self.displayed.push((v.ui(vui, highlight), v.clone()));
                     }
                 });
-            input_line.request_focus();
         });
     }
 }

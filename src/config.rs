@@ -40,4 +40,11 @@ impl Config {
 
         return fs::write(config_path, serialized);
     }
+
+    pub fn push_history(&mut self, input: String) -> () {
+        if self.history.len() > 25 {
+            self.history = self.history.as_slice()[5..].to_vec();
+        }
+        self.history.push(input);
+    }
 }
